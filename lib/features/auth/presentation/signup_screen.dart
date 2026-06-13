@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
@@ -8,26 +6,20 @@ import '../../../core/theme/app_colors.dart';
 import '../../../routes/app_route_paths.dart';
 import 'widgets/auth_visual_shell.dart';
 
-class OtpScreen extends StatefulWidget {
-  const OtpScreen({super.key});
+class SignupScreen extends StatefulWidget {
+  const SignupScreen({super.key});
 
   @override
-  State<OtpScreen> createState() => _OtpScreenState();
+  State<SignupScreen> createState() => _SignupScreenState();
 }
 
-class _OtpScreenState extends State<OtpScreen>
+class _SignupScreenState extends State<SignupScreen>
     with SingleTickerProviderStateMixin {
-  static const int _resendDurationInSeconds = 30;
-
-  final TextEditingController _otpController = TextEditingController();
-  Timer? _resendTimer;
-  int _remainingSeconds = _resendDurationInSeconds;
+  final TextEditingController _phoneController = TextEditingController();
 
   late final AnimationController _animationController;
   late final Animation<double> _fadeAnimation;
   late final Animation<Offset> _slideAnimation;
-
-  bool get _canResendOtp => _remainingSeconds == 0;
 
   @override
   void initState() {
@@ -48,55 +40,27 @@ class _OtpScreenState extends State<OtpScreen>
     ).animate(curvedAnimation);
 
     _animationController.forward();
-    _startResendTimer();
   }
 
   @override
   void dispose() {
-    _otpController.dispose();
+    _phoneController.dispose();
     _animationController.dispose();
-    _resendTimer?.cancel();
     super.dispose();
   }
 
-  void _startResendTimer() {
-    _resendTimer?.cancel();
-    setState(() => _remainingSeconds = _resendDurationInSeconds);
+  void _continueToOtp() {
+    final phoneNumber = _phoneController.text.trim();
+    final isValidPhoneNumber = RegExp(r'^\d{10}$').hasMatch(phoneNumber);
 
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_remainingSeconds <= 1) {
-        timer.cancel();
-        setState(() => _remainingSeconds = 0);
-        return;
-      }
-
-      setState(() => _remainingSeconds--);
-    });
-  }
-
-  void _resendOtp() {
-    if (!_canResendOtp) {
-      return;
-    }
-
-    _startResendTimer();
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('OTP resent successfully.')));
-  }
-
-  void _verifyOtp() {
-    final otp = _otpController.text.trim();
-    final isValidOtp = RegExp(r'^\d{6}$').hasMatch(otp);
-
-    if (!isValidOtp) {
+    if (!isValidPhoneNumber) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid 6-digit OTP.')),
+        const SnackBar(content: Text('Enter a valid 10-digit phone number.')),
       );
       return;
     }
 
-    context.go(AppRoutePaths.roleSelection);
+    context.go(AppRoutePaths.otp);
   }
 
   @override
@@ -132,10 +96,10 @@ class _OtpScreenState extends State<OtpScreen>
                               children: [
                                 const AuthLogo(),
                                 const AuthIllustration(
-                                  icon: Icons.lock_rounded,
+                                  icon: Icons.person_add_alt_rounded,
                                 ),
                                 Text(
-                                  'Verification',
+                                  'Create Account',
                                   textAlign: TextAlign.center,
                                   style: textTheme.headlineMedium?.copyWith(
                                     color: AppColors.textPrimary,
@@ -145,7 +109,7 @@ class _OtpScreenState extends State<OtpScreen>
                                 ),
                                 const SizedBox(height: 10),
                                 Text(
-                                  'Enter the OTP sent to your phone.',
+                                  'Start your GymPro workspace with phone verification.',
                                   textAlign: TextAlign.center,
                                   style: textTheme.bodyMedium?.copyWith(
                                     color: AppColors.textSecondary,
@@ -153,22 +117,35 @@ class _OtpScreenState extends State<OtpScreen>
                                   ),
                                 ),
                                 const SizedBox(height: 34),
-                                TextField(
-                                  controller: _otpController,
+                                TextFormField(
+                                  key: const ValueKey('signup_phone_field'),
+                                  controller: _phoneController,
+                                  enabled: true,
+                                  readOnly: false,
+                                  autofocus: false,
+                                  autocorrect: false,
+                                  enableSuggestions: false,
+                                  cursorColor: AppColors.primary,
+                                  style: textTheme.bodyLarge?.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                   keyboardType: TextInputType.number,
                                   textInputAction: TextInputAction.done,
-                                  textAlign: TextAlign.center,
-                                  style: textTheme.headlineSmall?.copyWith(
-                                    color: AppColors.textPrimary,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 8,
-                                  ),
                                   inputFormatters: [
                                     FilteringTextInputFormatter.digitsOnly,
-                                    LengthLimitingTextInputFormatter(6),
+                                    LengthLimitingTextInputFormatter(10),
                                   ],
                                   decoration: InputDecoration(
-                                    hintText: 'X X X X X X',
+                                    hintText: 'Phone number',
+                                    hintStyle: textTheme.bodyLarge?.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    prefixIcon: const Icon(
+                                      Icons.phone_iphone_rounded,
+                                    ),
+                                    prefixText: '+91 ',
                                     filled: true,
                                     fillColor: AppColors.surface,
                                     contentPadding: const EdgeInsets.symmetric(
@@ -194,11 +171,11 @@ class _OtpScreenState extends State<OtpScreen>
                                       ),
                                     ),
                                   ),
-                                  onSubmitted: (_) => _verifyOtp(),
+                                  onFieldSubmitted: (_) => _continueToOtp(),
                                 ),
                                 const SizedBox(height: 24),
                                 FilledButton(
-                                  onPressed: _verifyOtp,
+                                  onPressed: _continueToOtp,
                                   style: FilledButton.styleFrom(
                                     backgroundColor: AppColors.primary,
                                     foregroundColor: Colors.white,
@@ -209,41 +186,24 @@ class _OtpScreenState extends State<OtpScreen>
                                       borderRadius: BorderRadius.circular(16),
                                     ),
                                   ),
-                                  child: const Text('Verify OTP'),
+                                  child: const Text('Sign Up'),
                                 ),
-                                const SizedBox(height: 16),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: AppColors.primary.withValues(
-                                      alpha: 0.08,
+                                const SizedBox(height: 18),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Already associated? ',
+                                      style: textTheme.bodySmall?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
                                     ),
-                                    borderRadius: BorderRadius.circular(16),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          _canResendOtp
-                                              ? 'Didn’t receive the code?'
-                                              : 'Resend OTP in $_remainingSeconds s',
-                                          style: textTheme.bodySmall?.copyWith(
-                                            color: AppColors.textPrimary,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                      TextButton(
-                                        onPressed: _canResendOtp
-                                            ? _resendOtp
-                                            : null,
-                                        child: const Text('Resend'),
-                                      ),
-                                    ],
-                                  ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          context.go(AppRoutePaths.login),
+                                      child: const Text('Sign In'),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),

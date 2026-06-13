@@ -3,11 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../routes/app_route_paths.dart';
+import 'widgets/auth_visual_shell.dart';
 
-// ConsumerStatefulWidget is used when a screen needs both local widget state
-// and access to Riverpod providers. This login screen currently uses local
-// state for the phone field, while staying ready for auth providers later.
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
@@ -15,16 +14,39 @@ class LoginScreen extends ConsumerStatefulWidget {
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends ConsumerState<LoginScreen> {
-  // TextEditingController lets this screen read, clear, and manage the phone
-  // number entered in the TextField without adding business logic yet.
+class _LoginScreenState extends ConsumerState<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _phoneController = TextEditingController();
+
+  late final AnimationController _animationController;
+  late final Animation<double> _fadeAnimation;
+  late final Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 520),
+    );
+    final curvedAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeOut,
+    );
+    _fadeAnimation = curvedAnimation;
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.04),
+      end: Offset.zero,
+    ).animate(curvedAnimation);
+
+    _animationController.forward();
+  }
 
   @override
   void dispose() {
-    // dispose() releases the TextEditingController when the screen is removed,
-    // preventing memory leaks in long-running production apps.
     _phoneController.dispose();
+    _animationController.dispose();
     super.dispose();
   }
 
@@ -32,8 +54,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     final phoneNumber = _phoneController.text.trim();
     final isValidPhoneNumber = RegExp(r'^\d{10}$').hasMatch(phoneNumber);
 
-    // Validation keeps the OTP flow safe by allowing only exactly 10 digits
-    // before navigation. Invalid input is explained with a SnackBar.
     if (!isValidPhoneNumber) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Enter a valid 10-digit phone number.')),
@@ -41,137 +61,171 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    // Navigation uses GoRouter so route changes stay centralized, declarative,
-    // and easy to protect later with authentication redirects.
     context.go(AppRoutePaths.otp);
   }
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
+      backgroundColor: AppColors.background,
       body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final maxFormWidth = constraints.maxWidth < 480
-                ? double.infinity
-                : 420.0;
-
-            return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight - 64,
+        child: AuthVisualShell(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 28,
+                  vertical: 24,
                 ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(maxWidth: maxFormWidth),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Center(
-                          child: Container(
-                            width: 72,
-                            height: 72,
-                            decoration: BoxDecoration(
-                              color: colorScheme.primaryContainer,
-                              borderRadius: BorderRadius.circular(24),
-                            ),
-                            alignment: Alignment.center,
-                            child: Text(
-                              'GP',
-                              style: textTheme.headlineSmall?.copyWith(
-                                color: colorScheme.onPrimaryContainer,
-                                fontWeight: FontWeight.w800,
-                              ),
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(
+                    minHeight: constraints.maxHeight - 48,
+                  ),
+                  child: Center(
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: SlideTransition(
+                        position: _slideAnimation,
+                        child: AuthContentPanel(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(32, 34, 32, 28),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                const AuthLogo(),
+                                const AuthIllustration(
+                                  icon: Icons.fitness_center_sharp,
+                                ),
+                                Text(
+                                  'Login',
+                                  textAlign: TextAlign.center,
+                                  style: textTheme.headlineMedium?.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.8,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  'Let’s crush gym operations this week.',
+                                  textAlign: TextAlign.center,
+                                  style: textTheme.bodyMedium?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 34),
+                                TextFormField(
+                                  key: const ValueKey('login_phone_field'),
+                                  controller: _phoneController,
+                                  enabled: true,
+                                  readOnly: false,
+                                  autofocus: false,
+                                  autocorrect: false,
+                                  enableSuggestions: false,
+                                  cursorColor: AppColors.primary,
+                                  style: textTheme.bodyLarge?.copyWith(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  keyboardType: TextInputType.number,
+                                  textInputAction: TextInputAction.done,
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.digitsOnly,
+                                    LengthLimitingTextInputFormatter(10),
+                                  ],
+                                  decoration: InputDecoration(
+                                    hintText: 'Phone number',
+                                    hintStyle: textTheme.bodyLarge?.copyWith(
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    prefixIcon: const Icon(
+                                      Icons.phone_iphone_rounded,
+                                    ),
+                                    prefixText: '+91 ',
+                                    filled: true,
+                                    fillColor: AppColors.surface,
+                                    contentPadding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 18,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: BorderSide(
+                                        color: AppColors.primary.withValues(
+                                          alpha: 0.42,
+                                        ),
+                                      ),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(14),
+                                      borderSide: const BorderSide(
+                                        color: AppColors.primary,
+                                        width: 2,
+                                      ),
+                                    ),
+                                  ),
+                                  onFieldSubmitted: (_) => _continueToOtp(),
+                                ),
+                                const SizedBox(height: 24),
+                                FilledButton(
+                                  onPressed: _continueToOtp,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 18,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                    ),
+                                  ),
+                                  child: const Text('Sign In'),
+                                ),
+                                const SizedBox(height: 18),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Not associated yet? ',
+                                      style: textTheme.bodySmall?.copyWith(
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          context.go(AppRoutePaths.signup),
+                                      child: const Text('Sign Up'),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'By continuing, you agree to GymPro Terms & Privacy.',
+                                  textAlign: TextAlign.center,
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: AppColors.textSecondary,
+                                    height: 1.4,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
-                        const SizedBox(height: 28),
-                        Text(
-                          'GymPro',
-                          textAlign: TextAlign.center,
-                          style: textTheme.headlineMedium?.copyWith(
-                            color: colorScheme.onSurface,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Sign in to manage your fitness business.',
-                          textAlign: TextAlign.center,
-                          style: textTheme.bodyLarge?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        // TextField captures the phone number using a numeric
-                        // keyboard, India country prefix, and rounded outline
-                        // styling that follows the active Material 3 theme.
-                        TextField(
-                          controller: _phoneController,
-                          keyboardType: TextInputType.phone,
-                          textInputAction: TextInputAction.done,
-                          inputFormatters: [
-                            FilteringTextInputFormatter.digitsOnly,
-                            LengthLimitingTextInputFormatter(10),
-                          ],
-                          decoration: InputDecoration(
-                            labelText: 'Phone number',
-                            hintText: '9876543210',
-                            prefixText: '+91 ',
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(18),
-                              borderSide: BorderSide(
-                                color: colorScheme.outlineVariant,
-                              ),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(18),
-                              borderSide: BorderSide(
-                                color: colorScheme.primary,
-                                width: 2,
-                              ),
-                            ),
-                          ),
-                          onSubmitted: (_) => _continueToOtp(),
-                        ),
-                        const SizedBox(height: 24),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            onPressed: _continueToOtp,
-                            style: FilledButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(18),
-                              ),
-                            ),
-                            child: const Text('Continue'),
-                          ),
-                        ),
-                        const SizedBox(height: 32),
-                        Text(
-                          'By continuing, you agree to GymPro Terms & Privacy.',
-                          textAlign: TextAlign.center,
-                          style: textTheme.bodySmall?.copyWith(
-                            color: colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );

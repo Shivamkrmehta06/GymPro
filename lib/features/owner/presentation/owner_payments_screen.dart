@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/widgets/app_page.dart';
 
-class MembersScreen extends StatelessWidget {
-  const MembersScreen({super.key});
+class OwnerPaymentsScreen extends StatelessWidget {
+  const OwnerPaymentsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const AppPage(title: 'Members');
+    return const AppPage(title: 'Owner Payments');
   }
 }

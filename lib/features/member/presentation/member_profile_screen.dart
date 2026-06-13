@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../../core/widgets/app_page.dart';
 
-class ProfileScreen extends StatelessWidget {
-  const ProfileScreen({super.key});
+class MemberProfileScreen extends StatelessWidget {
+  const MemberProfileScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return const AppPage(title: 'Profile');
+    return const AppPage(title: 'Member Profile');
   }
 }
